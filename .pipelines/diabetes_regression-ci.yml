@@ -35,15 +35,7 @@ stages:
     steps:
     - template: code-quality-template.yml
     - script: |
-        which az
-        az --version
-        /usr/bin/az --version
-        /usr/bin/az login --service-principal \
-          -u $(servicePrincipalId) \
-          --tenant $(tenantId) \
-          --allow-no-subscriptions \
-          --federated-token $(AZURE_FEDERATED_TOKEN)
-      displayName: 'Login with system az'
+        az upgrade --yes
     - task: AzureCLI@1
       inputs:
         azureSubscription: '$(WORKSPACE_SVC_CONNECTION)'
