@@ -33,9 +33,12 @@ stages:
     steps:
     - script: |
         set -e
-        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        # Install Azure CLI into a local folder under the agent home, no sudo needed
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash -s -- --install-dir $HOME/azcli --bin-dir $HOME/azcli/bin
+        export PATH="$HOME/azcli/bin:$PATH"
         az version
-      displayName: 'Install latest Azure CLI'
+      displayName: 'Install latest Azure CLI (no sudo)'
+
     - task: AzureCLI@2
       inputs:
         azureSubscription: '$(WORKSPACE_SVC_CONNECTION)'
@@ -44,9 +47,10 @@ stages:
         workingDirectory: $(Build.SourcesDirectory)
         inlineScript: |
           set -e
+          export PATH="$HOME/azcli/bin:$PATH"
+          az version
           export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
           python -m ml_service.pipelines.diabetes_regression_build_train_pipeline
-
       displayName: 'Publish Azure Machine Learning Pipeline'
 
 - stage: 'Trigger_AML_Pipeline'
