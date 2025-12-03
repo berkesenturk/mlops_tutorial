@@ -33,13 +33,14 @@ stages:
     steps:
     - script: |
         set -e
-        python -m pip install --upgrade pip
-        # install azure-cli into user space
-        python -m pip install --user azure-cli
+        # upgrade pip in user space only
+        python -m pip install --user --upgrade pip
         export PATH="$HOME/.local/bin:$PATH"
+        # install azure-cli for the current user
+        python -m pip install --user --upgrade azure-cli
         az version
       displayName: 'Install Azure CLI via pip (user)'
-
+      
     - task: AzureCLI@2
       inputs:
         azureSubscription: '$(WORKSPACE_SVC_CONNECTION)'
@@ -52,7 +53,7 @@ stages:
           az version
           export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
           python -m ml_service.pipelines.diabetes_regression_build_train_pipeline
-
+      displayName: 'Publish Azure Machine Learning Pipeline'
 
 - stage: 'Trigger_AML_Pipeline'
   displayName: 'Train and evaluate model'
