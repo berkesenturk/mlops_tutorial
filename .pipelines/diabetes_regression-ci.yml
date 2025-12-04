@@ -29,29 +29,20 @@ stages:
   displayName: 'Model CI'
   jobs:
   - job: "Model_CI_Pipeline"
+    displayName: "Model CI Pipeline"
     container: mlops
+    timeoutInMinutes: 0
     steps:
-    - script: |
-        set -e
-        # upgrade pip in user space only
-        python -m pip install --user --upgrade pip
-        export PATH="$HOME/.local/bin:$PATH"
-        # install azure-cli for the current user
-        python -m pip install --user --upgrade azure-cli
-        az version
-      displayName: 'Install Azure CLI via pip (user)'
-      
-    - task: AzureCLI@2
+    - template: code-quality-template.yml
+    - task: AzureCLI@1
       inputs:
         azureSubscription: '$(WORKSPACE_SVC_CONNECTION)'
-        scriptType: bash
         scriptLocation: inlineScript
         workingDirectory: $(Build.SourcesDirectory)
         inlineScript: |
-          set -e
-          export PATH="$HOME/.local/bin:$PATH"
-          az version
+          set -e # fail on error
           export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          # Invoke the Python building and publishing a training pipeline
           python -m ml_service.pipelines.diabetes_regression_build_train_pipeline
       displayName: 'Publish Azure Machine Learning Pipeline'
 
@@ -67,21 +58,20 @@ stages:
     container: mlops
     timeoutInMinutes: 0
     steps:
-    - task: AzureCLI@2
+    - task: AzureCLI@1
       inputs:
         azureSubscription: '$(WORKSPACE_SVC_CONNECTION)'
-        scriptType: bash          # <-- add this
         scriptLocation: inlineScript
         workingDirectory: $(Build.SourcesDirectory)
         inlineScript: |
           set -e # fail on error
           export SUBSCRIPTION_ID=$(az account show --query id -o tsv)
           python -m ml_service.pipelines.run_train_pipeline --output_pipeline_id_file "pipeline_id.txt" --skip_train_execution
+          # Set AMLPIPELINEID variable for next AML Pipeline task in next job
           AMLPIPELINEID="$(cat pipeline_id.txt)"
           echo "##vso[task.setvariable variable=AMLPIPELINEID;isOutput=true]$AMLPIPELINEID"
       name: 'getpipelineid'
       displayName: 'Get Pipeline ID'
-
   - job: "Run_ML_Pipeline"
     dependsOn: "Get_Pipeline_ID"
     displayName: "Trigger ML Training Pipeline"
